@@ -1,0 +1,77 @@
+language: minimal
+dist: xenial
+sudo: required
+
+services:
+  - docker
+
+addons:
+  apt:
+    packages:
+      - docker-ce
+
+env:
+#  matrix:
+#    - PLATFORM=amd64
+#    - PLATFORM=arm64
+#    - PLATFORM=arm
+  global:
+    - DOCKER_ORG=sixsq
+    - DOCKER_IMAGE=graphite
+    - DOCKER_CLI_EXPERIMENTAL=enabled
+    - HADOLINT="${HOME}/hadolint"
+    # DOCKER_USERNAME
+    - secure: "hzWq2+WNWuvecxtVFOkd+Qg0INi4ex3MozOP0RpoGtCHSjoQNgXlY3GDEcvxacIL+7o+FR+RUKgfhLqjwWDQWoM80DNqi5aJfSRQp7NUAjRs/h1wVPk6zlKwMXulVvfbgmTChb/o5Z3lQ33Vdfasv3m18KqVs2WuX6N7Ep/2fFu5aIJZXoAOVB4WOx+RuB3/KtksYsJW4yP3IuXkyPnKGOFFZFo0ofKNhVPwCOYV8kyDhjgyoY7u8tmfFBi7FlPFPeXwuYXF6H+tdK4KzjLk2m0gs3z6M3liQgKt/8dhtiNWDyQ+x3PEAEi2LcxiBFVgObCMCgcrYKQCluRb465gXCq9Dszk9VqjdOCxH28IzbJFq9C5qzsLAHfbUSJys8gwj1cfWWji1Z+I+ika+XtqIo+JPhWuFlzw0Mpl4Rz487x6/bD5Plcjgyo8UXHMdSDUfDs5UJJ3GMlqbgoLlD2fUPJxffnpXO8rOYnzb5blQ/kpBjypAWKiQ2UB8MhFm+avSMQsKpC3Jbt1xf5zgRcbusq7N4nFHczZYPPSYCuImTAsTfLD/qTAuOiDslcbwdO6J2y3y0Hwm2pnqBANBDt7Ft83dfGfTQrysm4KvYWyU++KEN2BgCLLEjjupXfrbo11E6Xmc2rceQg/UiXoai+SB973ETXpyMLMdaPEaa6gxeQ="
+    # DOCKER_PASSWORD
+    - secure: "kHiIWnbeRyH1VVtU4VlpFeLgzDW7U6aJ55UBpvcya9AvvhXvn63YhkFfmtMq+EojLD8P0oWHBh1xYjHRd9wFCBiIyzVXCOKpk7sLWKJw2kLh80LwU/UoTWlNfGk32exhxPYGE6g1icMkYT+ADca9Wo+RwHw8M2aQuVLCdNa/ErgIvmU/UsiD+D14vbNpUaKL3OMq3ll73SP3KCh0HK7ksc188K1LPFiF+sIRU5E/N9yJGNVWK9exJz543xh0vW83e7hFNkR/nXZfLvRuUFij9/zqKJnF00z55T/tIjYLttApyTCLdRHfeZTSgFuNen/QFTg4ZaA9erb8Vl29RsPOOrWXZCqqJaRA3WYmo/stWwFN+BZ2RVqekrV5YfWw84QSTHlBmFmgAuxzB231IzwhMOsWOTJ8RGrQnrWZvh4Ap3qRidN07QOC5kMlynBJtSj7zq50Atk0DrOfDQNVGLBqYHjclkIjQbMJzL9w7n7pLO93OsaNCpZTXP/8rQu9397Kt8k4HZBXQf0Z7lwDIGmmAj5FGhKViHdI5QoBPb3vBtLZXEiMiSPoP69UWb2XfsS+0457LZwClEHkhRDyyEJrk0ox8RSQF+ICL3PAwo6UtkL453J9ue8Sph0wti9ClduPCvkUZhxMqTV8sgUwUpTRnaUnYmTnVIbgVgic64uKwbg="
+
+before_install:
+  - echo "options timeout:5" | sudo tee -a /etc/resolvconf/resolv.conf.d/tail
+  - echo "options attempts:5" | sudo tee -a /etc/resolvconf/resolv.conf.d/tail
+  - sudo service resolvconf restart
+  - echo '{"experimental":true}' | sudo tee /etc/docker/daemon.json
+  - sudo systemctl restart docker
+  - sudo docker run --privileged linuxkit/binfmt:v0.6
+
+install:
+  - docker image pull moby/buildkit:master
+
+before_script:
+  # remove any previous builds
+  - rm -Rf target/*.tar
+  - mkdir -p target
+
+jobs:
+  include:
+  - stage: test
+    install: skip
+    script: ./.travis/test.sh
+  - stage: build
+    script: ./.travis/build.sh
+    env: PLATFORM=amd64
+  - script: ./.travis/build.sh
+    env: PLATFORM=arm64
+  - script: ./.travis/build.sh
+    env: PLATFORM=arm
+  - stage: deploy
+    script: ./.travis/push.sh
+    env: PLATFORMS='amd64 arm64 arm'
+    install: skip
+    on:
+      all_branches: true
+
+#script:
+#  - "${HADOLINT} --ignore DL3018 Dockerfile"
+#  - ./.travis/build.sh
+
+#deploy:
+#  provider: script
+#  script: ./.travis/push.sh
+#  skip_cleanup: true
+#  on:
+#    all_branches: true
+#    #tags: true
+
+#notifications:
+#  slack:
+#    secure: s3m20MabcfD6F5MGLDXiH15T0uw7mbGHGjziexQy7T7T4A7zPltgaYxgvmwDfkzOsUlNfKXLmmwrIL7IMoqE7KooLOUEnfrJ53pk1zr6QobRmXVnj8prisTKP8chCclt3ehtWA5KDlSQbDQr+QdaxkjKZFzeWOe1BMG2bwpsB5UMJvxXo3NQ9GC4rU81ea28nlZOhy/S0Q8qRE851B1hiqFwnNfzr9SgweuoWfstZYrxc/3w3uZjOrBxoUAgp3Y2GhfUWsuWagnaJhO0+vqWAt6coTnhu13tFxipsb/OHkHEMjivPKMiWA51F1Y4flAOgGgMmivah3DXkJweS8R/wGt8CAWUDrJLNZZ863Y8Zk//a3KS2Fp1P7KaRnhQiF7cZsWngW7+qojK++U1QcfQLPSxpLCd1pW7m/nju07MUx52uAm5JOkxxZmhT3OaNsA66TduhXNb4icOeh5aKXYuLVFqEeiE2Bf1x1Y5+6z6Lbg2aYHw4emFxj7Niljfl6b3sOuetvNHZlrduKTtbQzHQg/E4vNdCQLQEdax0t4mBz/t9LSXo362oIXUwtExIWPRtsFg5y++NgvsSmLbZEm5mT/fpftyEhsPB1qGl9WyORH9N88xJ9PwJ24YirRSKRgwwrc4ftJIW61R0y4QmgHqFoaThH6OxSaHUQU+RvIaXsY=
