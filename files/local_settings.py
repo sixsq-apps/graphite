@@ -1,10 +1,17 @@
 # Edit this file to override the default graphite settings, do not edit settings.py
+import os
 
 # Turn on debugging and restart apache if you ever see an "Internal Server Error" page
 #DEBUG = True
 
 # Set your local timezone (django will try to figure this out automatically)
-#TIME_ZONE = 'Europe/Zurich'
+TIME_ZONE = os.getenv('Timezone', os.getenv('TZ', 'UTC'))
+
+# Timeout for data fetches in seconds
+FETCH_TIMEOUT = os.getenv('GRAPHITE_FETCH_TIMEOUT', 45)
+
+# Use a pool of worker threads to dispatch finder requests in parallel
+USE_WORKER_POOL = bool(os.getenv('GRAPHITE_USE_WORKER_POOL', False) in ['true', 'on', 'yes', 'y', 'o', True])
 
 # Setting MEMCACHE_HOSTS to be empty will turn off use of memcached entirely
 #MEMCACHE_HOSTS = ['127.0.0.1:11211']
