@@ -56,3 +56,8 @@ resulting in whisper files of approximately 4MiB.
 By default, the timezone is configured to `Europe/Zurich`.
 To change it, edit the following file in the container:
 `/var/lib/graphite/webapp/graphite/local_settings.py`
+
+
+## Copyright
+
+Copyright &copy; 2021, SixSq SA
